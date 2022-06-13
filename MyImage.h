@@ -2,9 +2,10 @@
 #include <Windows.h>
 #include <assert.h>
 #include <cstdio>
-#define CLIP(x) (x < 0) ? 0 : x > 255 ? 255 : x
+#define CLIP(x) (x < 0) ? 0 : x > 255 ? 255 : x //아주 많은 데이터들을(바이트데이터)를 엑세스 해야해서
 
-template <typename T>
+template <typename T> //클래스 이름 또는 템플릿 이름 적어주면 됨
+
 class CMyImage
 {
 public:
@@ -17,29 +18,29 @@ public:
 	{
 	}
 
-	CMyImage(int nWidth, int nHeight, int nChannels = 1)
+	CMyImage(int nWidth, int nHeight, int nChannels = 1) //채널은 기본으로 지정해줌(default 매개변수)
 		:m_nChannels(nChannels)
 		, m_nHeight(nHeight)
 		, m_nWidth(nWidth)
-		, m_nWStep(((nWidth* nChannels * sizeof(T) + 3) & ~3) / sizeof(T))
+		, m_nWStep(((nWidth* nChannels * sizeof(T) + 3) & ~3) / sizeof(T)) //동적 할당
 	{
 		m_pImageData = new T[m_nHeight * m_nWStep];
 	}
 
-	CMyImage(const CMyImage& myImage)
+	CMyImage(const CMyImage& myImage) //매개변수를 자기자신 참조변수로 받는 복사생성자
 	{
 		m_nChannels = myImage.m_nChannels;
 		m_nHeight = myImage.m_nHeight;
 		m_nWidth = myImage.m_nWidth;
 		m_nWStep = myImage.m_nWStep;
-		m_pImageData = new T[m_nHeight * m_nWStep];
+		m_pImageData = new T[m_nHeight * m_nWStep]; //동적할당 사용 -> 깊은복사
 		memcpy(m_pImageData, myImage.m_pImageData, m_nHeight * m_nWStep * sizeof(T));
 	}
 
-	CMyImage& operator = (const CMyImage& myImage)
+	CMyImage& operator = (const CMyImage& myImage) //operator -> 연산자 중복정의 (대입 연산자에 대한 내용)
 	{
-		if (this == &myImage)
-			return *this;
+		if (this == &myImage) //우측에 있는 데이터를 좌측에 집어넣을 때
+			return *this; //자기 자신이면 자기자신의 주소를 리턴
 
 		m_nChannels = myImage.m_nChannels;
 		m_nHeight = myImage.m_nHeight;
@@ -56,7 +57,7 @@ public:
 		return *this;
 	}
 	template <typename From>
-	CMyImage(const CMyImage<From>& myImage)
+	CMyImage(const CMyImage<From>& myImage) // 바이트가 아닐 때 사용하려고 한 거 같음
 	{
 		m_nChannels = myImage.GetChannel();
 		m_nHeight = myImage.GetHeight();
@@ -70,11 +71,11 @@ public:
 		{
 			for (int r = 0; r < m_nHeight; r++)
 			{
-				T* pDst = GetPtr(r);
-				From* pSrc = myImage.GetPtr(r);
+				T* pDst = GetPtr(r);	//복사할 위치 주소값 ->row의 인덱스를 받아 해당하는 주소값 리턴
+				From* pSrc = myImage.GetPtr(r); // 원본에 대한 이미지
 				for (int c = 0; 0 < nWStep; c++)
 				{
-					pDst[c] = (T)(pSrc[c]);
+					pDst[c] = (T)(pSrc[c]); //4의 배수가 아니면 4의배수로 만들어서 저장한다는 명령
 				}
 			}
 		}
@@ -85,17 +86,19 @@ public:
 		if (m_pImageData) delete[] m_pImageData;
 	}
 
-	bool LoadImage(const char* filename)
+	bool LoadImage(const char* filename) //이미지 읽어오는 부분
 	{
 		assert(sizeof(T) == 1); // BYTE형의 경우만 가능
 
-		if (strcmp(".BMP", &filename[strlen(filename) - 4]))
+		if (! strcmp(".BMP", &filename[strlen(filename) - 4]))
 		{
 			FILE* pFile = NULL;
 			fopen_s(&pFile, filename, "rb");
 			if (!pFile)
 				return false;
 
+			//비트맵파일헤더, 비트맵인포헤더 두 개가 존재하여 용량이 추가가 됨(bmp형태의 화소점을 읽어서 그림을 그려줄 수 있음)
+			//이 두 가지가 제대로 정의가 안될 경우 파일은 만들어지지만 그림 파일을 읽을 수 없다
 			BITMAPFILEHEADER fileHeader;
 
 			if (!fread(&fileHeader, sizeof(BITMAPFILEHEADER), 1, pFile))
@@ -239,7 +242,7 @@ public:
 			}
 		}
 	}
-	inline T& GetAt(int x, int y, int c = 0) const
+	inline T& GetAt(int x, int y, int c = 0) const //함수의 호출과 리턴을 하지 않고 사용하여 오버헤드 방지
 	{
 		assert(x >= 0 && x < m_nWidth&& y >= 0 && y < m_nHeight);
 		return m_pImageData[m_nWStep * y + m_nChannels * x + c];
@@ -251,15 +254,15 @@ public:
 	T* GetPtr(int r = 0, int c = 0) const { return m_pImageData + r * m_nWStep + c; }
 
 protected:
-	int m_nChannels;
-	int m_nHeight;
-	int m_nWidth;
-	int m_nWStep;
-	T* m_pImageData;
+	int m_nChannels;//채널 수 :  8비트 = 1바이트 = 1채널
+	int m_nHeight; //세로 픽셀 수
+	int m_nWidth; //가로 픽셀 수
+	int m_nWStep; // 행당 데이터 원소 수 (4의 배수)
+	T* m_pImageData; // 픽셀 배열 포인터
 };
 
 typedef CMyImage <BYTE> CByteImage;
 typedef CMyImage <int> CIntImage;
 typedef CMyImage <float> CFloatImage;
-typedef CMyImage <double> CDoubleImage;
+typedef CMyImage <double> CDoubleImage; //여러가지 자료형을 사용할 수 있게 여러가지 자료형을 구분해놓음
 
